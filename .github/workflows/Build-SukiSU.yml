@@ -148,7 +148,6 @@ jobs:
           echo "Selected ZRAM: ${{ github.event.inputs.ZRAM }}"
           echo "Selected VFS: ${{ github.event.inputs.VFS }}"
           echo "Selected KPM: ${{ github.event.inputs.KPM }}"
-          echo "Selected feature_z: ${{ github.event.inputs.feature_z }}"
 
       - name: Install repo tool
         run: |
