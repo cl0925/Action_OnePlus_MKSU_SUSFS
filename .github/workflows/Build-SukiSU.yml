@@ -6,7 +6,7 @@ on:
         type: choice
         description: "分支"
         required: true
-        default: sm8550
+        default: sm8650
         options:
           - sm7550
           - sm7675
@@ -19,7 +19,7 @@ on:
         type: choice
         description: "配置文件"
         required: true
-        default: oneplus_ace2pro_v
+        default: oneplus12_v
         options:
           - oneplus_nord_ce4_v
           - oneplus_ace_3v_v
@@ -47,7 +47,7 @@ on:
         type: choice
         description: "处理器代号"
         required: true
-        default: kalama
+        default: pineapple
         options:
           - crow
           - waipio
@@ -58,22 +58,22 @@ on:
         type: choice
         description: "内核安卓版本"
         required: true
-        default: android13
+        default: android14
         options:
           - android12
           - android13
           - android14
           - android15
       KERNEL_VERSION:
-       type: choice
-       description: "内核版本"
-       required: true
-       default: "5.15"
-       options:
-         - "5.10"
-         - "5.15"
-         - "6.1"
-         - "6.6"
+        type: choice
+        description: "内核版本"
+        required: true
+        default: "6.1"
+        options:
+          - "5.10"
+          - "5.15"
+          - "6.1"
+          - "6.6"
       BUILD_METHOD:
         type: choice
         description: "编译方式"
@@ -96,12 +96,19 @@ on:
         type: boolean
         description: "是否启用KPM？"
         required: true
-        default: true
+        default: false
       ZRAM:
         type: boolean
         description: "是否启用添加更多的ZRAM算法？"
         required: true
         default: false
+
+      enable_feature_z:
+        type: boolean
+        description: "是否添加风驰驱动"
+        required: true
+        default: true
+
 
 jobs:
   build:
@@ -114,10 +121,10 @@ jobs:
           root-reserve-mb: 8192
           temp-reserve-mb: 2048
           swap-size-mb: 8192
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+          remove-codeql: "true"
 
       - name: Configure Git
         run: |
@@ -141,6 +148,7 @@ jobs:
           echo "Selected ZRAM: ${{ github.event.inputs.ZRAM }}"
           echo "Selected VFS: ${{ github.event.inputs.VFS }}"
           echo "Selected KPM: ${{ github.event.inputs.KPM }}"
+          echo "Selected feature_z: ${{ github.event.inputs.feature_z }}"
 
       - name: Install repo tool
         run: |
@@ -331,17 +339,26 @@ jobs:
             fi
           fi
 
+      - name: Add sched_ext
+        if: ${{github.event.inputs.enable_feature_z }}
+        run: |
+          cd kernel_workspace/kernel_platform/
+          git clone https://github.com/HanKuCha/sched_ext.git
+          cp -r ./sched_ext/* ./common/kernel/sched
+          rm -rf ./sched_ext/.git
+          cd common/kernel/sched
+
       - name: Build kernel
         if: ${{ github.event.inputs.CPU == 'sm8650' || github.event.inputs.CPU == 'sm7675' }}
         run: |
           cd kernel_workspace
           ./kernel_platform/build_with_bazel.py -t ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
-          
+
       - name: Fallback build kernel
         if: ${{ github.event.inputs.CPU != 'sm8650' && github.event.inputs.CPU != 'sm7675' }}
         run: |
-         cd kernel_workspace
-         LTO=thin SYSTEM_DLKM_RE_SIGN=0 BUILD_SYSTEM_DLKM=0 KMI_SYMBOL_LIST_STRICT_MODE=0 ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+          cd kernel_workspace
+          LTO=thin SYSTEM_DLKM_RE_SIGN=0 BUILD_SYSTEM_DLKM=0 KMI_SYMBOL_LIST_STRICT_MODE=0 ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
 
       - name: Make AnyKernel3
         run: |
